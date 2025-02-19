@@ -23,6 +23,8 @@ struct SplitResult {
 
 SplitResult splitMessage(String message, char delimiter);
 
+int numSurah = 0;
+
 void setup() {
   Serial.begin(115200);
   WiFi.begin(ssid, password);
@@ -49,9 +51,15 @@ void setup() {
       for (int i = 0; i < combos.count; i++) {
         Serial.println("Stored Part [" + String(i) + "]: " + combos.parts[i]);
       }
+      numSurah = combos.count;
+      
     } else {
       Serial.println("Message does not contain '+'.");
+      numSurah = 1;
     }
+    Serial.print("Number of Surahs: ");
+    Serial.println(numSurah);
+    
   } else {
     Serial.println("Failed to fetch the last message.");
   }

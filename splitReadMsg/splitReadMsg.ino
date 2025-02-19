@@ -34,7 +34,7 @@ void setup() {
     // Check if the message contains "+"
     if (lastMessage.indexOf("+") != -1) {
       Serial.println("Message contains '+', splitting...");
-      splitMessage(lastMessage);
+      splitMessage(lastMessage, '+');
       
       // Example: Accessing parts later
       Serial.println("Accessing parts later:");
@@ -90,15 +90,15 @@ String getLastMessageFromDiscord() {
 }
 
 // Function to split the message and store it in an array
-void splitMessage(String message) {
+void splitMessage(String message, char delimiter) {
   int startIndex = 0;
-  int endIndex = message.indexOf("+");
+  int endIndex = message.indexOf(delimiter);
   partsCount = 0;  // Reset count
 
   while (endIndex != -1 && partsCount < MAX_PARTS) {
     messageParts[partsCount++] = message.substring(startIndex, endIndex);
     startIndex = endIndex + 1;
-    endIndex = message.indexOf("+", startIndex);
+    endIndex = message.indexOf(delimiter, startIndex);
   }
 
   // Store the last part

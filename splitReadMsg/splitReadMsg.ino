@@ -2,7 +2,7 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
-#define MAX_PARTS 10  // Define the maximum number of parts
+//#define MAX_PARTS 10  // Define the maximum number of parts
 
 // WiFi credentials
 const char* ssid = "YOUR_WIFI"; 
@@ -12,8 +12,16 @@ const char* password = "WIFI_PASSWORD";
 const char* botToken = "DISCORD_BOT_TOKEN";  
 const char* readChannelId = "DISCORD_CHANNEL";   
 
-String messageParts[MAX_PARTS];  // Array to store message parts
-int partsCount = 0;  // Number of parts stored
+//String messageParts[MAX_PARTS];  // Array to store message parts
+//int partsCount = 0;  // Number of parts stored
+
+// Structure to hold the split results
+struct SplitResult {
+  String parts[10];  // Fixed-size array to store up to 10 split parts
+  int count;         // Number of parts found in the split operation
+};
+
+SplitResult splitMessage(String message, char delimiter);
 
 void setup() {
   Serial.begin(115200);
@@ -34,12 +42,12 @@ void setup() {
     // Check if the message contains "+"
     if (lastMessage.indexOf("+") != -1) {
       Serial.println("Message contains '+', splitting...");
-      splitMessage(lastMessage, '+');
+      SplitResult combos = splitMessage(lastMessage, '+');
       
       // Example: Accessing parts later
       Serial.println("Accessing parts later:");
-      for (int i = 0; i < partsCount; i++) {
-        Serial.println("Stored Part [" + String(i) + "]: " + messageParts[i]);
+      for (int i = 0; i < combos.count; i++) {
+        Serial.println("Stored Part [" + String(i) + "]: " + combos.parts[i]);
       }
     } else {
       Serial.println("Message does not contain '+'.");
@@ -89,20 +97,26 @@ String getLastMessageFromDiscord() {
   return messageContent;
 }
 
-// Function to split the message and store it in an array
-void splitMessage(String message, char delimiter) {
-  int startIndex = 0;
-  int endIndex = message.indexOf(delimiter);
-  partsCount = 0;  // Reset count
 
-  while (endIndex != -1 && partsCount < MAX_PARTS) {
-    messageParts[partsCount++] = message.substring(startIndex, endIndex);
-    startIndex = endIndex + 1;
-    endIndex = message.indexOf(delimiter, startIndex);
+// Function to split a given string based on a specified delimiter
+SplitResult splitMessage(String message, char delimiter) {
+  SplitResult result;  // Create a struct to store results
+  result.count = 0;    // Initialize the count of parts
+
+  int startIndex = 0;  // Index where the next substring starts
+  int endIndex = message.indexOf(delimiter);  // Find first occurrence of delimiter
+
+  // Loop to find and extract substrings
+  while (endIndex != -1 && result.count < 10) {  // Continue while delimiter exists and we have space in the array
+    result.parts[result.count++] = message.substring(startIndex, endIndex);  // Store substring in array
+    startIndex = endIndex + 1;  // Move start index past the delimiter
+    endIndex = message.indexOf(delimiter, startIndex);  // Find next occurrence of delimiter
   }
 
-  // Store the last part
-  if (partsCount < MAX_PARTS) {
-    messageParts[partsCount++] = message.substring(startIndex);
+  // Store the last part of the message (after the last delimiter)
+  if (result.count < 10) {
+    result.parts[result.count++] = message.substring(startIndex);
   }
+
+  return result;  // Return the struct containing the split parts
 }

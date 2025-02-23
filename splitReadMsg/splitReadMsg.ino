@@ -52,6 +52,27 @@ void setup() {
         Serial.println("Stored Part [" + String(i) + "]: " + combos.parts[i]);
       }
       numSurah = combos.count;
+      Serial.print("Number of Surahs: ");
+      Serial.println(numSurah);
+  
+      SplitResult seperators[numSurah];
+      
+      for (int j = 0; j < numSurah; j++){
+        if (combos.parts[j].indexOf(":") != -1) {
+          seperators[j] = splitMessage(combos.parts[j], ':');
+  
+  
+          Serial.println("Accessing parts later:");
+          for (int k = 0; k < seperators[j].count; k++) {
+            Serial.println("Stored Part [" + String(k) + "]: " + seperators[j].parts[k]);
+          }
+        }
+        else{
+          //SURAH WITH ALL VERSES ADDED
+          Serial.println("all verses");
+        }
+      
+      }
       
     } else {
       Serial.println("Message does not contain '+'.");

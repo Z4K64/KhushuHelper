@@ -35,7 +35,7 @@ void setup() {
     Serial.print(".");
   }
   Serial.println("\nConnected to WiFi!");
-
+//SPLITTING COMBOS
   // Fetch and process the last message
   String lastMessage = getLastMessageFromDiscord();
   if (lastMessage != "") {
@@ -54,7 +54,7 @@ void setup() {
       numSurah = combos.count;
       Serial.print("Number of Surahs: ");
       Serial.println(numSurah);
-  
+  //SPLITTING SURAH FROM VERSES
       SplitResult seperators[numSurah];
       
       for (int j = 0; j < numSurah; j++){

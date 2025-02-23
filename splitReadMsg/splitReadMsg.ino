@@ -47,11 +47,12 @@ void setup() {
       SplitResult combos = splitMessage(lastMessage, '+');
       
       // Example: Accessing parts later
-      Serial.println("Accessing parts later:");
+      Serial.println("Slitting combos:");
       for (int i = 0; i < combos.count; i++) {
         Serial.println("Stored Part [" + String(i) + "]: " + combos.parts[i]);
       }
       numSurah = combos.count;
+      int chosenSurahs[numSurah];
       Serial.print("Number of Surahs: ");
       Serial.println(numSurah);
   //SPLITTING SURAH FROM VERSES
@@ -62,14 +63,29 @@ void setup() {
           seperators[j] = splitMessage(combos.parts[j], ':');
   
   
-          Serial.println("Accessing parts later:");
+          Serial.println("Splitting Surah from Verse:");
           for (int k = 0; k < seperators[j].count; k++) {
             Serial.println("Stored Part [" + String(k) + "]: " + seperators[j].parts[k]);
           }
+
+          //chosenSurahs[j] = seperators[j].parts[0];  Need to add sting to int
+      // SPLITTING VERSE SELECTION
+          SplitResult msgVerses[numSurah];
+
+          if (seperators[j].parts[1].indexOf(",") != -1){
+            msgVerses[j] = splitMessage(seperators[j].parts[1], ',');
+            Serial.println("Splitting selected verses:");
+            for (int l = 0; l < msgVerses[j].count; l++) {
+              Serial.println("Stored Part [" + String(l) + "]: " + msgVerses[j].parts[l]);
+            }            
+            
+          }
+          
         }
         else{
           //SURAH WITH ALL VERSES ADDED
           Serial.println("all verses");
+          //chosenSurahs[j] = combos.parts[j]; Need to add sting to int
         }
       
       }

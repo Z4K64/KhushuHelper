@@ -77,6 +77,19 @@ void setup() {
             Serial.println("Splitting selected verses:");
             for (int l = 0; l < msgVerses[j].count; l++) {
               Serial.println("Stored Part [" + String(l) + "]: " + msgVerses[j].parts[l]);
+
+              SplitResult selection;
+              if (msgVerses[j].parts[l].indexOf("-") != -1){
+                Serial.println("Splitting selection:");
+                selection = splitMessage(msgVerses[j].parts[l], '-');
+
+                for (int m = 0; m < selection.count; m++) {
+                  Serial.println("Stored Part [" + String(m) + "]: " + selection.parts[m]);
+                }
+                Serial.println(selection.parts[0]);
+                selection.parts[0].replace(" ", "");
+                Serial.println(selection.parts[0]);
+              }
             }            
             
           }

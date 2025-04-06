@@ -85,10 +85,18 @@ void setup() {
 
                 for (int m = 0; m < selection.count; m++) {
                   Serial.println("Stored Part [" + String(m) + "]: " + selection.parts[m]);
+
+                  selection.parts[m].replace(" ", ""); 
                 }
-                Serial.println(selection.parts[0]);
-                selection.parts[0].replace(" ", "");
-                Serial.println(selection.parts[0]);
+                int startVerse = selection.parts[0].toInt();
+                int endVerse = selection.parts[1].toInt();
+                int rangeVerse = endVerse - startVerse;
+                Serial.println(startVerse);
+                Serial.println(endVerse);
+                Serial.println(rangeVerse);
+                //Serial.println(selection.parts[0]);
+                //selection.parts[0].replace(" ", "");
+                //Serial.println(selection.parts[0]);
               }
             }            
             

@@ -68,7 +68,7 @@ void setup() {
             Serial.println("Stored Part [" + String(k) + "]: " + seperators[j].parts[k]);
           }
 
-          //chosenSurahs[j] = seperators[j].parts[0];  Need to add sting to int
+          chosenSurahs[j] = seperators[j].parts[0].toInt();  //Need to add sting to int
       // SPLITTING VERSE SELECTION
           SplitResult msgVerses[numSurah];
 
@@ -91,8 +91,8 @@ void setup() {
                 int startVerse = selection.parts[0].toInt();
                 int endVerse = selection.parts[1].toInt();
                 int rangeVerse = endVerse - startVerse;
-                Serial.println(startVerse);
-                Serial.println(endVerse);
+                //Serial.println(startVerse);
+                //Serial.println(endVerse);
                 Serial.println(rangeVerse);
                 //Serial.println(selection.parts[0]);
                 //selection.parts[0].replace(" ", "");
@@ -106,17 +106,21 @@ void setup() {
         else{
           //SURAH WITH ALL VERSES ADDED
           Serial.println("all verses");
-          //chosenSurahs[j] = combos.parts[j]; Need to add sting to int
+          chosenSurahs[j] = combos.parts[j].toInt(); //Need to add sting to int
         }
       
+      }
+      Serial.println("Chosen Surahs: ");
+      for (int j = 0; j < numSurah; j++){
+        Serial.println(chosenSurahs[j]);
       }
       
     } else {
       Serial.println("Message does not contain '+'.");
       numSurah = 1;
     }
-    Serial.print("Number of Surahs: ");
-    Serial.println(numSurah);
+    //Serial.print("Number of Surahs: ");
+    //Serial.println(numSurah);
     
   } else {
     Serial.println("Failed to fetch the last message.");

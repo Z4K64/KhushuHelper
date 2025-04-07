@@ -53,12 +53,15 @@ void setup() {
       }
       numSurah = combos.count;
       int chosenSurahs[numSurah];
+      int chosenVerses[numSurah][286] = {0};
+      int verseIndex = 0;
       Serial.print("Number of Surahs: ");
       Serial.println(numSurah);
   //SPLITTING SURAH FROM VERSES
       SplitResult seperators[numSurah];
       
       for (int j = 0; j < numSurah; j++){
+        verseIndex = 0;
         if (combos.parts[j].indexOf(":") != -1) {
           seperators[j] = splitMessage(combos.parts[j], ':');
   
@@ -98,6 +101,14 @@ void setup() {
                 //selection.parts[0].replace(" ", "");
                 //Serial.println(selection.parts[0]);
               }
+              else{
+                Serial.println("Non Selection");
+                msgVerses[j].parts[l].replace(" ", "");
+                Serial.println(msgVerses[j].parts[l]);
+                //Serial.println(chosenVerses[j][verseIndex]);
+                chosenVerses[j][verseIndex] = msgVerses[j].parts[l].toInt();
+                verseIndex += 1;                
+              }
             }            
             
           }
@@ -110,9 +121,18 @@ void setup() {
         }
       
       }
-      Serial.println("Chosen Surahs: ");
       for (int j = 0; j < numSurah; j++){
+        Serial.println("Chosen Surah: ");
         Serial.println(chosenSurahs[j]);
+        for (int n = 0; n < 286; n++){
+          if (chosenVerses[j][n] != 0){
+            Serial.println("Chosen Verse: ");
+            Serial.print(n);
+            Serial.print(" ");
+            Serial.println(chosenVerses[j][n]);
+          }
+        }
+        
       }
       
     } else {

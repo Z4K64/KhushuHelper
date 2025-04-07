@@ -96,10 +96,16 @@ void setup() {
                 int rangeVerse = endVerse - startVerse;
                 //Serial.println(startVerse);
                 //Serial.println(endVerse);
-                Serial.println(rangeVerse);
+                Serial.println("range");
                 //Serial.println(selection.parts[0]);
                 //selection.parts[0].replace(" ", "");
                 //Serial.println(selection.parts[0]);
+
+                for (int n = startVerse; n < (endVerse + 1); n++) {
+                  //Serial.println(n);
+                  chosenVerses[j][verseIndex] = n;
+                  verseIndex += 1;
+                }
               }
               else{
                 Serial.println("Non Selection");

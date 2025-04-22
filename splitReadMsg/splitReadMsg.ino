@@ -130,14 +130,17 @@ void setup() {
       for (int j = 0; j < numSurah; j++){
         Serial.println("Chosen Surah: ");
         Serial.println(chosenSurahs[j]);
+        Serial.println("Chosen Verses: ");
         for (int n = 0; n < 286; n++){
           if (chosenVerses[j][n] != 0){
-            Serial.println("Chosen Verse: ");
-            Serial.print(n);
+            
+            //Serial.print(n);
+            
+            Serial.print(chosenVerses[j][n]);
             Serial.print(" ");
-            Serial.println(chosenVerses[j][n]);
           }
         }
+        Serial.println();
         
       }
       

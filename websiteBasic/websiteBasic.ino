@@ -2,12 +2,18 @@
 #include <WebServer.h>
 #include <Preferences.h>
 #include <Update.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
 
 Preferences preferences;
 WebServer server(80);
 
 const char* apSSID = "ESP32_Setup";
 const char* apPassword = "12345678";
+
+// API URL for Quran translation
+String apiUrl = "https://api.alquran.cloud/v1/edition/language/en"; //"https://api.alquran.cloud/v1/ayah/" + String(surah) + ":" + String(verse) + "/en.sahih";
+std::vector<String> fetchTranslators(String url);
 
 bool shouldReboot = false;
 
@@ -23,6 +29,8 @@ const char* htmlForm = R"rawliteral(
     Password: <input type="password" name="password" value="%PASSWORD%"><br>
     Frequency (hours): <input type="number" name="frequency" min="1" value="%FREQUENCY%"><br>
     Start Time (HH:MM): <input type="time" name="start" value="%START%"><br>
+    Translator: 
+    <select name="translator">%TRANSLATORS%</select><br>
     <input type="submit" value="Save Settings">
 </form>
 <form action="/clear" method="post" style="margin-top:10px;">
@@ -36,6 +44,7 @@ const char* htmlForm = R"rawliteral(
     <li><strong>Password:</strong> %PASSWORD%</li>
     <li><strong>Frequency:</strong> %FREQUENCY% hours</li>
     <li><strong>Start Time:</strong> %START%</li>
+    <li><strong>Translator:</strong> %TRANSLATOR%</li>
   </ul>
 
   <h2>Firmware Update</h2>
@@ -50,6 +59,47 @@ const char* htmlForm = R"rawliteral(
 </body>
 </html>
 )rawliteral";
+
+std::vector<String> fetchTranslators(String url) {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi not connected!");
+    return {"Failed to fetch translators."};
+  }
+
+  HTTPClient http;
+  http.begin(url);
+  int httpResponseCode = http.GET();
+
+  if (httpResponseCode > 0) {
+    String response = http.getString();
+    Serial.println("API Response: " + response);
+
+    // Parse JSON response
+    StaticJsonDocument<1024> doc;
+    DeserializationError error = deserializeJson(doc, response);
+
+    if (error) {
+      Serial.println("JSON parsing error");
+      return {"Failed to parse translation."};
+    }
+    JsonArray data = doc["data"].as<JsonArray>();
+
+    std::vector<String> names;
+    for (JsonObject item : data) {
+      if (item["name"].as<String>() != "Transliteration"){
+        //Serial.println("True");
+        names.push_back(item["name"].as<String>());
+      }
+    }
+    //String translators = doc["data"]["name"].as<String>();
+    http.end();
+    return names;
+  } else {
+    Serial.println("Error in API request: " + String(httpResponseCode));
+    http.end();
+    return {"Failed to fetch translation."};//"Failed to fetch translation.";
+  }
+}
 
 
 String getWiFiOptions() {
@@ -67,6 +117,7 @@ void handleRoot() {
   String savedPassword = preferences.getString("password", "");
   int frequency = preferences.getInt("frequency", 1);
   String start = preferences.getString("start", "08:00");
+  String savedTranslator = preferences.getString("translator", "");
   preferences.end();
 
   String page = htmlForm;
@@ -82,11 +133,23 @@ void handleRoot() {
     options += ">" + ssidOption + "</option>";
   }
 
+  // Fetch the translation from the API
+  std::vector<String> translators = fetchTranslators(apiUrl);
+  // Build Translator options
+  String translatorOptions = "";
+  for (const auto& t : translators) {
+    translatorOptions += "<option value='" + t + "'";
+    if (t == savedTranslator) translatorOptions += " selected";
+    translatorOptions += ">" + t + "</option>";
+  }
+
   page.replace("%OPTIONS%", options);
   page.replace("%SSID%", savedSSID);
   page.replace("%PASSWORD%", savedPassword);
   page.replace("%FREQUENCY%", String(frequency));
   page.replace("%START%", start);
+  page.replace("%TRANSLATORS%", translatorOptions);
+  page.replace("%TRANSLATOR%", savedTranslator);
 
   server.send(200, "text/html", page);
 }
@@ -98,6 +161,7 @@ void handleSave() {
   preferences.putString("password", server.arg("password"));
   preferences.putInt("frequency", server.arg("frequency").toInt());
   preferences.putString("start", server.arg("start"));
+  preferences.putString("translator", server.arg("translator"));
   preferences.end();
 
   server.send(200, "text/html", "<h3>Settings Saved. Rebooting...</h3>");

@@ -4,6 +4,7 @@
 #include <Update.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <time.h>
 
 Preferences preferences;
 WebServer server(80);
@@ -20,9 +21,41 @@ bool shouldReboot = false;
 const char* htmlForm = R"rawliteral(
 <!DOCTYPE html>
 <html>
-<head><title>ESP32 Setup</title></head>
+<head><title>ESP32 Setup</title>
+<script>
+  window.onload = function() {
+    const timeEl = document.getElementById("time");
+    const startStr = timeEl.dataset.start;
+    const startTime = new Date(startStr.replace(" ", "T")); // Convert to JS Date
+
+    if (isNaN(startTime.getTime())) {
+      console.error("Invalid time format");
+      return;
+    }
+
+    function updateTime() {
+      const now = new Date(startTime.getTime() + (Date.now() - window.pageLoadTime));
+      const formatted = now.toLocaleString('en-GB', {
+        hour12: false,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      }).replace(",", "");
+      timeEl.textContent = formatted;
+    }
+
+    window.pageLoadTime = Date.now();
+    updateTime();
+    setInterval(updateTime, 1000);
+  };
+</script>
+</head>
 <body>
   <h2>WiFi Setup</h2>
+   <p><strong>Current Time:</strong> <span id="time" data-start="%LOCALTIME%">%LOCALTIME%</span></p>
   <form action="/save" method="post">
     SSID: 
     <select name="ssid">%OPTIONS%</select><br>
@@ -31,6 +64,9 @@ const char* htmlForm = R"rawliteral(
     Start Time (HH:MM): <input type="time" name="start" value="%START%"><br>
     Translator: 
     <select name="translator">%TRANSLATORS%</select><br>
+    <input type="submit" value="Save Settings">
+    Time Zone: 
+    <select name="timezone">%TIMEZONES%</select><br>
     <input type="submit" value="Save Settings">
 </form>
 <form action="/clear" method="post" style="margin-top:10px;">
@@ -45,6 +81,7 @@ const char* htmlForm = R"rawliteral(
     <li><strong>Frequency:</strong> %FREQUENCY% hours</li>
     <li><strong>Start Time:</strong> %START%</li>
     <li><strong>Translator:</strong> %TRANSLATOR%</li>
+    <li><strong>Time Zone:</strong> %TIMEZONE%</li>
   </ul>
 
   <h2>Firmware Update</h2>
@@ -59,6 +96,7 @@ const char* htmlForm = R"rawliteral(
 </body>
 </html>
 )rawliteral";
+
 
 std::vector<String> fetchTranslators(String url) {
   if (WiFi.status() != WL_CONNECTED) {
@@ -111,6 +149,33 @@ String getWiFiOptions() {
   return options;
 }
 
+String getTimeZoneOptions(String selected) {
+  struct TimeZoneOption {
+    const char* label;
+    const char* value;
+  };
+
+  TimeZoneOption timeZones[] = {
+    {"UTC", "UTC0"},
+    {"UK (BST)", "GMT0BST,M3.5.0/1,M10.5.0/2"},
+    {"US Eastern", "EST5EDT,M3.2.0/2,M11.1.0/2"},
+    {"US Central", "CST6CDT,M3.2.0/2,M11.1.0/2"},
+    {"US Mountain", "MST7MDT,M3.2.0/2,M11.1.0/2"},
+    {"US Pacific", "PST8PDT,M3.2.0/2,M11.1.0/2"},
+    {"India (IST)", "IST-5:30"},
+    {"Australia (AEST)", "AEST-10AEDT,M10.1.0,M4.1.0"}
+  };
+
+  String html = "";
+  for (const auto& z : timeZones) {
+    html += "<option value='" + String(z.value) + "'";
+    if (String(z.value) == selected) html += " selected";
+    html += ">" + String(z.label) + "</option>";
+  }
+  return html;
+}
+
+
 void handleRoot() {
   preferences.begin("settings", true);
   String savedSSID = preferences.getString("ssid", "");
@@ -118,7 +183,17 @@ void handleRoot() {
   int frequency = preferences.getInt("frequency", 1);
   String start = preferences.getString("start", "08:00");
   String savedTranslator = preferences.getString("translator", "");
+  String savedTZ = preferences.getString("timezone", "UTC0");
   preferences.end();
+
+// Set the timezone and get the current time
+  setenv("TZ", savedTZ.c_str(), 1);
+  tzset();
+  struct tm timeinfo;
+  getLocalTime(&timeinfo);
+  char timeStr[64];
+  strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+  String currentTime = String(timeStr);
 
   String page = htmlForm;
   String options = "";
@@ -150,6 +225,9 @@ void handleRoot() {
   page.replace("%START%", start);
   page.replace("%TRANSLATORS%", translatorOptions);
   page.replace("%TRANSLATOR%", savedTranslator);
+  page.replace("%TIMEZONES%", getTimeZoneOptions(savedTZ));
+  page.replace("%TIMEZONE%", savedTZ);
+  page.replace("%LOCALTIME%", currentTime);
 
   server.send(200, "text/html", page);
 }
@@ -162,6 +240,7 @@ void handleSave() {
   preferences.putInt("frequency", server.arg("frequency").toInt());
   preferences.putString("start", server.arg("start"));
   preferences.putString("translator", server.arg("translator"));
+  preferences.putString("timezone", server.arg("timezone"));
   preferences.end();
 
   server.send(200, "text/html", "<h3>Settings Saved. Rebooting...</h3>");
@@ -218,6 +297,7 @@ void tryAutoConnectWiFi() {
   preferences.begin("settings", true);
   String ssid = preferences.getString("ssid", "");
   String password = preferences.getString("password", "");
+  String savedTZ = preferences.getString("timezone", "");
   preferences.end();
 
   Serial.println("Attempting to connect with saved credentials:");
@@ -237,6 +317,20 @@ void tryAutoConnectWiFi() {
       Serial.println("\n✅ Connected to WiFi!");
       Serial.print("📡 IP Address: ");
       Serial.println(WiFi.localIP());
+
+      // 🕒 Setup NTP time
+      configTzTime(savedTZ.c_str(), "pool.ntp.org", "time.nist.gov");
+
+      // Optional: wait up to 5 seconds for sync
+      struct tm timeinfo;
+      for (int i = 0; i < 10; i++) {
+        if (getLocalTime(&timeinfo)) {
+          Serial.println("✅ NTP time synced.");
+          break;
+        }
+        delay(500);
+      }
+
     } else {
       Serial.println("\n❌ Failed to connect. Starting Access Point mode...");
       softAPEn();
@@ -252,6 +346,7 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
   tryAutoConnectWiFi();
+  
 
   Serial.println("Web server starting...");
   server.on("/", handleRoot);

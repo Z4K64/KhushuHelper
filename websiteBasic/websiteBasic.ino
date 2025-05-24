@@ -9,6 +9,9 @@
 Preferences preferences;
 WebServer server(80);
 
+time_t lastTriggerTime = 0;  // Keeps track of last triggered time
+//bool firstExecutionDone = false;
+
 const char* apSSID = "ESP32_Setup";
 const char* apPassword = "12345678";
 
@@ -64,7 +67,6 @@ const char* htmlForm = R"rawliteral(
     Start Time (HH:MM): <input type="time" name="start" value="%START%"><br>
     Translator: 
     <select name="translator">%TRANSLATORS%</select><br>
-    <input type="submit" value="Save Settings">
     Time Zone: 
     <select name="timezone">%TIMEZONES%</select><br>
     <input type="submit" value="Save Settings">
@@ -326,6 +328,10 @@ void tryAutoConnectWiFi() {
       for (int i = 0; i < 10; i++) {
         if (getLocalTime(&timeinfo)) {
           Serial.println("✅ NTP time synced.");
+          // Print current time (this will happen every time the block runs)
+          char buf[64];
+          strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
+          Serial.println(buf);
           break;
         }
         delay(500);
@@ -359,6 +365,38 @@ void setup() {
 
 void loop() {
   server.handleClient();
+
+  struct tm timeinfo;
+  if (getLocalTime(&timeinfo)) {
+    time_t now = mktime(&timeinfo); // Current time in seconds
+
+    // Read saved preferences
+    preferences.begin("settings", true);
+    String startStr = preferences.getString("start", "08:00");
+    int frequencyHours = preferences.getInt("frequency", 1);
+    preferences.end();
+
+    // Parse start time HH:MM
+    int startHour = startStr.substring(0, 2).toInt();
+    int startMin = startStr.substring(3, 5).toInt();
+
+    // Create today's start time as a time_t
+    struct tm startTime = timeinfo;
+    startTime.tm_hour = startHour;
+    startTime.tm_min = startMin;
+    startTime.tm_sec = 0;
+    time_t firstTrigger = mktime(&startTime);
+    //Serial.println(String(ctime(&firstTrigger)));
+    // Check if it's time to trigger
+    if (now >= firstTrigger && (lastTriggerTime == 0 || difftime(now, lastTriggerTime) >= frequencyHours * 3600)) {
+      Serial.println("⏰ Scheduled action triggered at: " + String(ctime(&now)));
+      lastTriggerTime = now;
+
+      // You can perform any action here, such as:
+      // digitalWrite, send a message, etc.
+    }
+  }
+
   if (shouldReboot) {
     delay(1000);
     ESP.restart();

@@ -17,7 +17,12 @@ const char* apPassword = "12345678";
 
 // API URL for Quran translation
 String apiUrl = "https://api.alquran.cloud/v1/edition/language/en"; //"https://api.alquran.cloud/v1/ayah/" + String(surah) + ":" + String(verse) + "/en.sahih";
+
+// Base URL for image of verse
+String imageUrl = "http://khushuhelper.infy.uk/verses/";
+
 std::vector<String> fetchTranslators(String url);
+
 
 bool shouldReboot = false;
 
@@ -413,4 +418,34 @@ void loop() {
     delay(1000);
     ESP.restart();
   }
+}
+
+
+// Function to send a message to Discord
+bool sendMessageToDiscord(const String& message) {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi not connected!");
+    return false;
+  }
+
+  HTTPClient http;
+  String url = "https://discord.com/api/v9/channels/" + String(channelId) + "/messages";
+
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Authorization", "Bot " + String(botToken));
+
+  // Format payload to send the message
+  String payload = "{\"content\":\"" + message + "\"}";
+  int httpResponseCode = http.POST(payload);
+
+  if (httpResponseCode > 0) {
+    String response = http.getString();
+    Serial.println("Discord Response: " + response);
+  } else {
+    Serial.println("Error in sending message: " + String(httpResponseCode));
+  }
+
+  http.end();
+  return httpResponseCode == 200;
 }

@@ -21,7 +21,7 @@ struct SplitResult {
   int count;         // Number of parts found in the split operation
 };
 
-SplitResult splitMessage(String message, char delimiter);
+SplitResult splitByDelimiter(String message, char delimiter);
 
 int numSurah = 0;
 
@@ -51,9 +51,19 @@ int lookup(int key) {
   return -1;  // Key not found
 }
 
-bool chosenSurahs[114] = {false};         // true if Surah is selected
-bool chosenVerses[114][286] = {false};    // true if that specific verse is selected
+const int MAX_SURAHS = 114;
+const int MAX_VERSES = 286;
+bool chosenSurahs[MAX_SURAHS] = { false };       // true if Surah is selected
+bool chosenVerses[MAX_SURAHS][MAX_VERSES] = { false };    // true if that specific verse is selected
 
+
+void processComboMessage(String message);
+void processSingleSurahMessage(String message);
+void processSurahWithVerses(int surahIndex, String verses);
+void processVerseSelections(int surahIndex, String versePart);
+void processRange(int surahIndex, String rangeStr);
+void markAllVersesInSurah(int surahIndex);
+void printSelectedVerses();
 
 void setup() {
   Serial.begin(115200);
@@ -66,282 +76,9 @@ void setup() {
     Serial.print(".");
   }
   Serial.println("\nConnected to WiFi!");
-//SPLITTING COMBOS
-  // Fetch and process the last message
-  String lastMessage = getLastMessageFromDiscord();
-  if (lastMessage != "") {
-    Serial.println("Last Message: " + lastMessage);
 
-    // Check if the message contains "+"
-    if (lastMessage.indexOf("+") != -1) {
-      Serial.println("Message contains '+', splitting...");
-      SplitResult combos = splitMessage(lastMessage, '+');
-      
-      // Example: Accessing parts later
-      Serial.println("Slitting combos:");
-      for (int i = 0; i < combos.count; i++) {
-        combos.parts[i].trim();
-        Serial.println("Stored Part [" + String(i) + "]: " + combos.parts[i]);
-      }
-      numSurah = combos.count;
+  handleMessage();
 
-      int verseIndex = 0;
-      Serial.print("Number of Surahs: ");
-      Serial.println(numSurah);
-  //SPLITTING SURAH FROM VERSES
-      SplitResult seperators[numSurah];
-      
-      for (int j = 0; j < numSurah; j++){
-        verseIndex = 0;
-        combos.parts[j].trim();
-        if (combos.parts[j].indexOf(":") != -1) {
-          seperators[j] = splitMessage(combos.parts[j], ':');
-          Serial.println("Splitting Surah from Verse:");
-          for (int k = 0; k < seperators[j].count; k++) {
-            seperators[j].parts[k].trim();
-            Serial.println("Stored Part [" + String(k) + "]: " + seperators[j].parts[k]);
-          }
-          int surahValue = seperators[j].parts[0].toInt() -1;
-
-          chosenSurahs[surahValue] = true;  //Need to add sting to int
-      // SPLITTING VERSE SELECTION
-          SplitResult msgVerses[numSurah];
-
-          if (seperators[j].parts[1].indexOf(",") != -1){
-            msgVerses[j] = splitMessage(seperators[j].parts[1], ',');
-            Serial.println("Splitting selected verses:");
-            for (int l = 0; l < msgVerses[j].count; l++) {
-              msgVerses[j].parts[l].trim();
-              Serial.println("Stored Part [" + String(l) + "]: " + msgVerses[j].parts[l]);
-              //SPLITTING RANGE Selection
-              SplitResult selection;
-              if (msgVerses[j].parts[l].indexOf("-") != -1){
-                Serial.println("Splitting selection:");
-                selection = splitMessage(msgVerses[j].parts[l], '-');
-
-                for (int m = 0; m < selection.count; m++) {
-                  Serial.println("Stored Part [" + String(m) + "]: " + selection.parts[m]);                 
-                }
-                selection.parts[0].trim();
-                selection.parts[0].trim();
-                int startVerse = selection.parts[0].toInt() -1;
-                int endVerse = selection.parts[1].toInt() -1;
-                int rangeVerse = endVerse - startVerse;
-                Serial.println("range");
-
-                for (int n = startVerse; n <= endVerse; n++) {
-                  chosenVerses[surahValue][n] = true;
-                  verseIndex += 1;
-                }
-              }
-              else{
-                Serial.println("Non Selection");
-                Serial.println(msgVerses[j].parts[l]);
-                msgVerses[j].parts[l].trim();
-                int msgValue = msgVerses[j].parts[l].toInt() -1;
-                chosenVerses[surahValue][msgValue] = true;
-                verseIndex += 1;                
-              }
-            }
-
-          }
-          else{
-
-            //SPLITTING RANGE Selection
-            SplitResult selection;
-            seperators[j].parts[1].trim();
-
-            if (seperators[j].parts[1].indexOf("-") != -1){
-              Serial.println("Splitting selection:");
-              selection = splitMessage(seperators[j].parts[1], '-');
-
-              for (int m = 0; m < selection.count; m++) {
-                Serial.println("Stored Part [" + String(m) + "]: " + selection.parts[m]);                  
-              }
-              selection.parts[0].trim();
-              selection.parts[1].trim();
-              int startVerse = selection.parts[0].toInt() -1;
-              int endVerse = selection.parts[1].toInt() -1;
-              int rangeVerse = endVerse - startVerse;
-              
-              Serial.println("range");
-
-              for (int n = startVerse; n <= endVerse; n++) {
-                chosenVerses[surahValue][n] = true;
-                verseIndex += 1;
-              }
-            }
-            else{
-              Serial.println("Non Selection");
-              
-              Serial.println(seperators[j].parts[1]);
-              
-              seperators[j].parts[1].trim();
-              int msgValue = seperators[j].parts[1].toInt() -1;
-              chosenVerses[surahValue][msgValue] = true;
-              verseIndex += 1;                
-            }
-          }  
-        }
-        else{
-          //SURAH WITH ALL VERSES ADDED
-          Serial.println("all verses");
-          combos.parts[j].trim();
-          int surahValue = combos.parts[j].toInt() -1;
-          Serial.println(surahValue +1);
-          chosenSurahs[surahValue] = true; //Need to add sting to int
-          
-          int numOfVerse = lookup(surahValue +1);
-          Serial.println(numOfVerse);
-          
-          for (int o = 0; o < numOfVerse; o++){
-            chosenVerses[surahValue][o] = true;
-          }
-        }  
-      }      
-    } 
-    else {
-      
-      Serial.println("Message does not contain '+'.");
-      numSurah = 1;
-
-      
-      int verseIndex = 0;
-
-      //Splitting SUrah from verses
-      SplitResult seperator;
-
-      if (lastMessage.indexOf(":") != -1) {
-        seperator = splitMessage(lastMessage, ':');
-
-        Serial.println("Splitting Surah from Verse:");
-        for (int k = 0; k < seperator.count; k++) {
-          seperator.parts[k].trim();
-          Serial.println("Stored Part [" + String(k) + "]: " + seperator.parts[k]);
-        }
-        int surahValue = seperator.parts[0].toInt() -1;
-        chosenSurahs[surahValue] = true;
-        //SPLITTING VERSE SELECTION
-        SplitResult msgVerses;
-
-        if (seperator.parts[1].indexOf(",") != -1){
-          msgVerses = splitMessage(seperator.parts[1], ',');
-          Serial.println("Splitting selected verses:");
-          for (int l = 0; l < msgVerses.count; l++) {
-            msgVerses.parts[l].trim();
-            Serial.println("Stored Part [" + String(l) + "]: " + msgVerses.parts[l]);
-            //SPLITTING RANGE Selection
-            SplitResult selection;
-            if (msgVerses.parts[l].indexOf("-") != -1){
-              Serial.println("Splitting selection:");
-              selection = splitMessage(msgVerses.parts[l], '-');
-
-              for (int m = 0; m < selection.count; m++) {
-                selection.parts[m].trim();
-                Serial.println("Stored Part [" + String(m) + "]: " + selection.parts[m]);
-
-                //selection.parts[m].replace(" ", "");                  
-              }
-              int startVerse = selection.parts[0].toInt() -1;
-              int endVerse = selection.parts[1].toInt() -1;
-              int rangeVerse = endVerse - startVerse;
-
-              for (int n = startVerse; n <= endVerse; n++) {
-                //Serial.println(n);
-                chosenVerses[surahValue][n] = true;
-                verseIndex += 1;
-              }
-            }
-            else{
-              Serial.println("Non Selection");
-              //msgVerses.parts[l].replace(" ", "");
-              msgVerses.parts[l].trim();
-              Serial.println(msgVerses.parts[l]);
-              //Serial.println(chosenVerses[j][verseIndex]);
-              int msgValue = msgVerses.parts[l].toInt() -1;
-              chosenVerses[surahValue][msgValue] = true;
-              verseIndex += 1;                
-            }
-          }
-        }
-        else{
-          //msgVerses = seperator.parts[1];
-
-          //SPLITTING RANGE Selection
-          SplitResult selection;
-          if (seperator.parts[1].indexOf("-") != -1){
-            Serial.println("Splitting selection:");
-            selection = splitMessage(seperator.parts[1], '-');
-
-            for (int m = 0; m < selection.count; m++) {
-              selection.parts[m].trim();
-              Serial.println("Stored Part [" + String(m) + "]: " + selection.parts[m]);
-
-              //selection.parts[m].replace(" ", "");                  
-            }
-            int startVerse = selection.parts[0].toInt() -1;
-            int endVerse = selection.parts[1].toInt() -1;
-            int rangeVerse = endVerse - startVerse;
-            
-            Serial.println("range");
-
-            for (int n = startVerse; n <= endVerse; n++) {
-              chosenVerses[surahValue][n] = true; 
-              verseIndex += 1;
-            }
-          }
-          else{
-            Serial.println("Non Selection");
-            //msgVerses.replace(" ", "");
-            seperator.parts[1].trim();
-            Serial.println(seperator.parts[1]);
-            //Serial.println(chosenVerses[j][verseIndex]);
-            int msgValue = seperator.parts[1].toInt() -1;
-            chosenVerses[surahValue][msgValue] = true;
-            verseIndex += 1;                
-          }
-        }
-      }
-      else{
-        //SURAH WITH ALL VERSES ADDED
-        Serial.println("all verses");
-        //Serial.println(lastMessage);
-        lastMessage.trim();
-        int surahValue = lastMessage.toInt() -1;
-        chosenSurahs[surahValue] = true;
-        Serial.println(surahValue +1);
-        int numOfVerse = lookup(surahValue +1);
-        Serial.println(numOfVerse);
-
-        for (int o = 0; o < numOfVerse; o++){
-          chosenVerses[surahValue][o] = true;
-        }
-
-      }
-
-      
-    }
-    
-    for (int j = 0; j < 114; j++) {
-      if (chosenSurahs[j]) {
-        Serial.println("Surah " + String(j + 1));  // Surah index is 0-based, display as 1-based
-
-    
-        Serial.print("Selected Verses: ");
-        for (int n = 0; n < 286; n++) {
-          if (chosenVerses[j][n]) {
-            Serial.print(n + 1); // verse numbers are 1-based
-            Serial.print(" ");
-          }
-        }
-        Serial.println();
-      }
-    }
-    
-
-  } else {
-    Serial.println("Failed to fetch the last message.");
-  }
 }
 
 void loop() {
@@ -386,7 +123,7 @@ String getLastMessageFromDiscord() {
 
 
 // Function to split a given string based on a specified delimiter
-SplitResult splitMessage(String message, char delimiter) {
+SplitResult splitByDelimiter(String message, char delimiter) {
   SplitResult result;  // Create a struct to store results
   result.count = 0;    // Initialize the count of parts
 
@@ -406,4 +143,108 @@ SplitResult splitMessage(String message, char delimiter) {
   }
 
   return result;  // Return the struct containing the split parts
+}
+
+void handleMessage() {
+  String lastMessage = getLastMessageFromDiscord();
+  if (lastMessage == "") {
+    Serial.println("Failed to fetch the last message.");
+    return;
+  }
+
+  Serial.println("Last Message: " + lastMessage);
+
+  if (lastMessage.indexOf('+') != -1) {
+    processComboMessage(lastMessage);
+  } else {
+    processSingleSurahMessage(lastMessage);
+  }
+
+  printSelectedVerses();
+}
+
+void processComboMessage(String message) {
+  SplitResult combos = splitByDelimiter(message, '+');
+  for (int i = 0; i < combos.count; i++) {
+    String part = combos.parts[i];
+    part.trim();
+
+    if (part.indexOf(':') != -1) {
+      SplitResult sep = splitByDelimiter(part, ':');
+      int surahIndex = sep.parts[0].toInt() - 1;
+      chosenSurahs[surahIndex] = true;
+      processSurahWithVerses(surahIndex, sep.parts[1]);
+    } else {
+      int surahIndex = part.toInt() - 1;
+      chosenSurahs[surahIndex] = true;
+      markAllVersesInSurah(surahIndex);
+    }
+  }
+}
+
+void processSingleSurahMessage(String message) {
+  message.trim();
+  if (message.indexOf(':') != -1) {
+    SplitResult sep = splitByDelimiter(message, ':');
+    int surahIndex = sep.parts[0].toInt() - 1;
+    chosenSurahs[surahIndex] = true;
+    processSurahWithVerses(surahIndex, sep.parts[1]);
+  } else {
+    int surahIndex = message.toInt() - 1;
+    chosenSurahs[surahIndex] = true;
+    markAllVersesInSurah(surahIndex);
+  }
+}
+
+void processSurahWithVerses(int surahIndex, String verses) {
+  if (verses.indexOf(',') != -1) {
+    SplitResult parts = splitByDelimiter(verses, ',');
+    for (int i = 0; i < parts.count; i++) {
+      processVerseSelections(surahIndex, parts.parts[i]);
+    }
+  } else {
+    processVerseSelections(surahIndex, verses);
+  }
+}
+
+void processVerseSelections(int surahIndex, String versePart) {
+  versePart.trim();
+  if (versePart.indexOf('-') != -1) {
+    processRange(surahIndex, versePart);
+  } else {
+    int verse = versePart.toInt() - 1;
+    chosenVerses[surahIndex][verse] = true;
+  }
+}
+
+void processRange(int surahIndex, String rangeStr) {
+  SplitResult range = splitByDelimiter(rangeStr, '-');
+  int start = range.parts[0].toInt() - 1;
+  int end = range.parts[1].toInt() - 1;
+  for (int i = start; i <= end; i++) {
+    chosenVerses[surahIndex][i] = true;
+  }
+}
+
+void markAllVersesInSurah(int surahIndex) {
+  int numVerses = lookup(surahIndex + 1);
+  for (int i = 0; i < numVerses; i++) {
+    chosenVerses[surahIndex][i] = true;
+  }
+}
+
+void printSelectedVerses() {
+  for (int i = 0; i < MAX_SURAHS; i++) {
+    if (chosenSurahs[i]) {
+      Serial.println("Surah " + String(i + 1));
+      Serial.print("Selected Verses: ");
+      for (int j = 0; j < MAX_VERSES; j++) {
+        if (chosenVerses[i][j]) {
+          Serial.print(j + 1);
+          Serial.print(" ");
+        }
+      }
+      Serial.println();
+    }
+  }
 }

@@ -21,6 +21,18 @@ std::vector<String> fetchTranslators(String url);
 
 bool shouldReboot = false;
 
+// Discord constants
+// Bot Token
+const char* botToken = "DISCORD_BOT_TOKEN";
+
+// Channel ID's
+
+const char* general_ChannelId = "GENERAL_DISCORD_CHANNEL";
+const char* surahVerseSelection_ChannelId = "SURAHVERSESELECTION_DISCORD_CHANNEL";
+const char* confirmedSelection_ChannelId = "CONFIRMEDSELECTION_DISCORD_CHANNEL";
+const char* sentVerses_ChannelId = "SENTVERSES_DISCORD_CHANNEL";
+
+
 const char* htmlForm = R"rawliteral(
 <!DOCTYPE html>
 <html>

@@ -429,7 +429,7 @@ bool sendMessageToDiscord(const String& message) {
   }
 
   HTTPClient http;
-  String url = "https://discord.com/api/v9/channels/" + String(channelId) + "/messages";
+  String url = "https://discord.com/api/v9/channels/" + String(general_ChannelId) + "/messages";
 
   http.begin(url);
   http.addHeader("Content-Type", "application/json");

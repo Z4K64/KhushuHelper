@@ -31,6 +31,11 @@ struct SplitResult {
 
 SplitResult splitByDelimiter(String message, char delimiter);
 
+
+struct surahVerse {
+  int values[2];
+};
+
 int numSurah = 0;
 
 // Lookup table: key 1 => 100, key 2 => 200, ..., key 5 => 500
@@ -484,12 +489,75 @@ void scheduledTime(){
       //String confirmedSelection_Msg = getLastMessageFromDiscord(confirmedSelection_ChannelId);
       //String sentVerses_Msg = getLastMessageFromDiscord(sentVerses_ChannelId);
       handleConfirmedMessage();
-      Serial.println(verseInSelection());
+      surahVerse verseToSend;
+      if(verseInSelection()){
+        verseToSend = nextVerse();
+        //send verse and translation, and then into sentVerses
+      }
+      else{
+        verseToSend = restartSearchVerses();
+      }
+      
 
     }
   }
 }
 
+
+
+surahVerse nextVerse(){
+  surahVerse lastVerse = getLastVerse();
+  int surahIndex = lastVerse.values[0];
+  int verseIndex = lastVerse.values[1];
+  surahVerse next = searchVerses(surahIndex, verseIndex);
+  if (next.values[0] == -1 || next.values[1] == -1){
+    next = restartSearchVerses();
+  }
+  return next;
+}
+
+surahVerse searchVerses(int surahStart, int verseStart){
+  surahVerse next;
+  int jStart;
+  for (int i = surahStart; i < MAX_SURAHS; i++) {
+    if (i == surahStart){
+      jStart = verseStart + 1;
+    }
+    else{
+      jStart = 0;
+    }
+    for (int j = jStart; j < MAX_VERSES; j++) {
+      if(chosenVerses[i][j]){
+        Serial.println(i);
+        Serial.println(j);
+        next.values[0] = i;
+        next.values[1] = j;
+        return next;
+      }
+    }
+  }
+  next.values[0] = -1;
+  next.values[1] = -1;
+  return next;
+}
+
+surahVerse restartSearchVerses(){
+  surahVerse next;
+  for (int i = 0; i < MAX_SURAHS; i++) {
+    for (int j = 0; j < MAX_VERSES; j++) {
+      if(chosenVerses[i][j]){
+        Serial.println(i);
+        Serial.println(j);
+        next.values[0] = i;
+        next.values[1] = j;
+        return next;
+      }
+    }
+  }
+  next.values[0] = -1;
+  next.values[1] = -1;
+  return next;
+}
 
 // Function to send a message to Discord
 bool sendMessageToDiscord(const String& message, const char* channelID) {
@@ -705,15 +773,23 @@ void printSelectedVerses() {
 }
 
 bool verseInSelection(){
-  String lastMessage = getLastMessageFromDiscord(sentVerses_ChannelId);
-  lastMessage.trim();
-  SplitResult sep = splitByDelimiter(lastMessage, ':');
-  int surahIndex = sep.parts[0].toInt() - 1;
-  int verseIndex = sep.parts[1].toInt() - 1;
+  surahVerse lastVerse = getLastVerse();
+  int surahIndex = lastVerse.values[0];
+  int verseIndex = lastVerse.values[1];
   if (chosenSurahs[surahIndex]){
     if (chosenVerses[surahIndex][verseIndex]){
       return true;
     }
   }
   return false;
+}
+
+surahVerse getLastVerse(){
+  surahVerse lastVerse;
+  String lastMessage = getLastMessageFromDiscord(sentVerses_ChannelId);
+  lastMessage.trim();
+  SplitResult sep = splitByDelimiter(lastMessage, ':');
+  lastVerse.values[0] = sep.parts[0].toInt() - 1;
+  lastVerse.values[1] = sep.parts[1].toInt() - 1;
+  return lastVerse;
 }

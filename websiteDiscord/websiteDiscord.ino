@@ -86,6 +86,7 @@ const char* surahVerseSelection_ChannelId = "SURAHVERSESELECTION_DISCORD_CHANNEL
 const char* confirmedSelection_ChannelId = "CONFIRMEDSELECTION_DISCORD_CHANNEL";
 const char* sentVerses_ChannelId = "SENTVERSES_DISCORD_CHANNEL";
 
+String surahVerseSelection_Msg = "";
 
 const char* htmlForm = R"rawliteral(
 <!DOCTYPE html>
@@ -427,12 +428,31 @@ void setup() {
   server.on("/update", HTTP_POST, []() {}, handleUpdate);
   server.on("/clear", HTTP_POST, handleClear);
   server.begin();
-  handleMessage();
+  while (surahVerseSelection_Msg == ""){
+    handleMessage();
+  }
+  
 }
 
 void loop() {
   server.handleClient();
+  /*
+  if (getLastMessageFromDiscord(surahVerseSelection_ChannelId) != surahVerseSelection_Msg){
+    handleMessage();
+  } 
+  */
+  //String msg = getLastMessageFromDiscord(surahVerseSelection_ChannelId);
 
+  
+
+  if (shouldReboot) {
+    delay(1000);
+    ESP.restart();
+  }
+}
+
+
+void scheduledTime(){
   struct tm timeinfo;
   if (getLocalTime(&timeinfo)) {
     time_t now = mktime(&timeinfo); // Current time in seconds
@@ -461,12 +481,12 @@ void loop() {
 
       // You can perform any action here, such as:
       // digitalWrite, send a message, etc.
-    }
-  }
+      //String confirmedSelection_Msg = getLastMessageFromDiscord(confirmedSelection_ChannelId);
+      //String sentVerses_Msg = getLastMessageFromDiscord(sentVerses_ChannelId);
+      handleConfirmedMessage();
+      Serial.println(verseInSelection());
 
-  if (shouldReboot) {
-    delay(1000);
-    ESP.restart();
+    }
   }
 }
 
@@ -566,7 +586,7 @@ void handleMessage() {
     Serial.println("Failed to fetch the last message.");
     return;
   }
-
+  surahVerseSelection_Msg = lastMessage;
   Serial.println("Last Message: " + lastMessage);
 
   if (lastMessage.indexOf('+') != -1) {
@@ -574,8 +594,28 @@ void handleMessage() {
   } else {
     processSingleSurahMessage(lastMessage);
   }
-
+  // IF Valid func:
+  if (lastMessage != getLastMessageFromDiscord(confirmedSelection_ChannelId)){
+    sendMessageToDiscord(lastMessage,confirmedSelection_ChannelId);
+  }  
   printSelectedVerses();
+}
+
+void handleConfirmedMessage() {
+  String lastMessage = getLastMessageFromDiscord(confirmedSelection_ChannelId);
+  if (lastMessage == "") {
+    Serial.println("Failed to fetch the last message.");
+    return;
+  }
+  Serial.println("Last Message: " + lastMessage);
+
+  if (lastMessage.indexOf('+') != -1) {
+    processComboMessage(lastMessage);
+  } else {
+    processSingleSurahMessage(lastMessage);
+  }
+  printSelectedVerses();
+
 }
 
 void processComboMessage(String message) {
@@ -662,4 +702,18 @@ void printSelectedVerses() {
       Serial.println();
     }
   }
+}
+
+bool verseInSelection(){
+  String lastMessage = getLastMessageFromDiscord(sentVerses_ChannelId);
+  lastMessage.trim();
+  SplitResult sep = splitByDelimiter(lastMessage, ':');
+  int surahIndex = sep.parts[0].toInt() - 1;
+  int verseIndex = sep.parts[1].toInt() - 1;
+  if (chosenSurahs[surahIndex]){
+    if (chosenVerses[surahIndex][verseIndex]){
+      return true;
+    }
+  }
+  return false;
 }
